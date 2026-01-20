@@ -1,0 +1,136 @@
+<?php
+/**
+ * @var Date $block
+ */
+
+use MageMe\WebFormsLite\Block\Form\Element\Field\Type\Date;
+use MageMe\WebFormsLite\Config\CssOrder;
+
+$validationRules = $block->getValidationRules();
+$validationDescriptions = $block->getValidationDescriptions();
+$accessible = $block->isAccessible();
+?>
+<div class='webforms-datepicker'>
+    <div id='<?= $block->getFieldId() ?>_calendar' class='webforms-calendar'>
+        <input id='<?= $block->getFieldId() ?>'
+               name='<?= $block->getFieldName() ?>'
+               type='text'
+               class='<?= $block->getFieldClass() ?>'
+               style='<?= $block->getFieldStyle() ?>'
+               value='<?= $block->getFieldValue() ?>'
+               placeholder="<?= $block->getPlaceholder() ?>"
+               <?php if ($validationRules) { ?>
+                   data-validate="{<?= implode(", ", $validationRules); ?>}"
+               <?php } ?>
+               <?php foreach ($validationDescriptions as $key => $data) {
+                   echo $key . '=' . '"' . htmlspecialchars((string)$data) . '"';
+               }
+               ?>
+               <?php if ($block->getIsLabelHidden()) { ?>aria-label="<?= $block->getFieldLabel() ?>"
+               <?php } else { ?> aria-labelledby="label_<?= $block->getFieldId() ?>" <?php } ?>
+               <?php if ($block->getIsRequired()) { ?>aria-required="true"<?php } ?>
+               <?= htmlspecialchars((string)$block->getCustomAttributes()) ?>
+        />
+        <svg style="position: absolute; top:10px; right:10px; width:24px; color: #666666" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
+        </svg>
+    </div>
+</div>
+<script type='text/javascript'>
+    require([
+        'jquery',
+        'mageUtils',
+        'moment-timezone-with-data'
+    ], function ($, utils, moment) {
+        let value = '<?= $block->getFieldValue() ?>',
+            format = '<?= $block->getDateFormat()?>';
+        if (!value) {
+            return;
+        }
+        const convertedValue = moment.tz(value, 'UTC');
+        format = utils.convertToMomentFormat(format);
+        $("#<?= $block->getFieldId()?>").val(convertedValue.format(format));
+    });
+</script>
+<script>
+    'use strict';
+
+    (() => {
+        if (!window.MageMe || !MageMe.loader) {
+            return;
+        }
+        MageMe.loader.addCssOrdered(
+            '<?= $block->getViewFileUrl('MageMe_WebFormsLiteBreeze::css/breeze/field/datepicker.css'); ?>',
+            '<?= CssOrder::FIELDS; ?>'
+        );
+        MageMe.loader.addScript("Datepicker",
+            "<?= $block->escapeJs($block->getViewFileUrl('MageMe_WebFormsLiteBreeze/js/breeze/datepicker.min.js')) ?>",
+            () => {
+                const isPastDisabled = <?php var_export($block->getIsPastDisabled()) ?>;
+                const isFutureDisabled = <?php var_export($block->getIsFutureDisabled()) ?>;
+                const isTodayDisabled = <?php var_export($block->getIsTodayDisabled()) ?>;
+                const isWeekNumbersShowed = <?php var_export($block->getIsWeekNumbersShowed()) ?>;
+                const pastOffset = <?php var_export($block->getPastOffset()) ?>;
+                const futureOffset = <?php var_export($block->getFutureOffset()) ?>;
+                const disabledWeekDays = <?= $block->getDisabledWeekDays() ?>;
+                const format = convertFormat('<?= $block->getDateFormat()?>', 'date');
+                const today = new Date();
+                const elm = document.getElementById('<?= $block->getFieldId()?>');
+
+                let config = {
+                    autohide: true,
+                    datesDisabled: [],
+                    showWeekNumbers: isWeekNumbersShowed,
+                    daysOfWeekDisabled: [],
+                    weekStart: 1,
+                    format: format
+                };
+                if (config.rtl) {
+                    $('#<?= $block->getFieldId() ?>_calendar').addClass('rtl');
+                }
+                if (isPastDisabled) {
+                    config.minDate = new Date();
+                    if (pastOffset) {
+                        config.minDate.setDate(config.minDate.getDate() + pastOffset)
+                    }
+                }
+                if (isFutureDisabled) {
+                    config.maxDate = new Date();
+                    if (futureOffset) {
+                        config.maxDate.setDate(config.maxDate.getDate() + futureOffset)
+                    }
+                }
+                if (isTodayDisabled) {
+                    config.datesDisabled.push(today);
+                }
+                for (let i = 0; i < disabledWeekDays.length; i++) {
+                    config.daysOfWeekDisabled.push(disabledWeekDays[i]);
+                }
+                Datepicker.locales.en = {
+                    days: ["<?= __("Sunday")?>", "<?= __("Monday")?>", "<?= __("Tuesday")?>", "<?= __("Wednesday")?>", "<?= __("Thursday")?>", "<?= __("Friday")?>", "<?= __("Saturday")?>"],
+                    daysShort: ["<?= __("Sun")?>", "<?= __("Mon")?>", "<?= __("Tue")?>", "<?= __("Wed")?>", "<?= __("Thu")?>", "<?= __("Fri")?>", "<?= __("Sat")?>"],
+                    daysMin: ["<?= __("Su")?>", "<?= __("Mo")?>", "<?= __("Tu")?>", "<?= __("We")?>", "<?= __("Th")?>", "<?= __("Fr")?>", "<?= __("Sa")?>"],
+                    months: ["<?= __("January")?>", "<?= __("February")?>", "<?= __("March")?>", "<?= __("April")?>", "<?= __("May")?>", "<?= __("June")?>", "<?= __("July")?>", "<?= __("August")?>", "<?= __("September")?>", "<?= __("October")?>", "<?= __("November")?>", "<?= __("December")?>"],
+                    monthsShort: ["<?= __("Jan")?>", "<?= __("Feb")?>", "<?= __("Mar")?>", "<?= __("Apr")?>", "<?= __("May")?>", "<?= __("Jun")?>", "<?= __("Jul")?>", "<?= __("Aug")?>", "<?= __("Sep")?>", "<?= __("Oct")?>", "<?= __("Nov")?>", "<?= __("Dec")?>"],
+                    today: "<?= __("Today")?>",
+                    clear: "<?= __("Clear")?>",
+                    titleFormat: "MM y",
+                    format: "<?= $block->getDateFormat()?>",
+                    weekStart: 0
+                };
+
+                new Datepicker(elm, config);
+            });
+    })();
+</script>
+<script>
+    (() => {
+        if (!window.MageMe || !MageMe.loader) {
+            return;
+        }
+        MageMe.loader.addCssOrdered(
+            '<?= $block->getViewFileUrl('MageMe_WebFormsLite::css/field/date.css'); ?>',
+            '<?= CssOrder::FIELDS; ?>'
+        );
+    })();
+</script>

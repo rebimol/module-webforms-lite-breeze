@@ -1,0 +1,61 @@
+<?php
+
+/** @var MageMe\WebFormsLite\Block\Form $block */
+
+use MageMe\WebFormsLite\Config\Options\Status;
+use MageMe\WebFormsLite\Controller\Form\Load;
+
+if ($block->getForm()->getIsActive() == Status::STATUS_DISABLED || !$block->isDirectAvailable()) {
+    echo $block->getNotAvailableMessage();
+} else { ?>
+
+    <?php if ($block->getSuccess()) { ?>
+        <div class="webforms-success-text">
+            <?= $block->getSuccessText() ?>
+        </div>
+        <script data-breeze>
+            <?= $block->getAfterSubmissionScript(); ?>
+        </script>
+    <?php } ?>
+
+    <?php if (($block->getSuccess() && $block->getForm()->getIsDisplayedAfterSubmission()) || !$block->getSuccess()) { ?>
+        <div id="webform-async-<?= $block->getUid() ?>"></div>
+        <script data-breeze>
+            require(['jquery'], function (breeze) {
+                $.ajax({
+                    url: '<?= $block->getData('async_url')?>',
+                    accepts: 'text/javascript',
+                    method: 'POST',
+                    data: {
+                        <?=Load::FORM_ID?>: '<?= $block->getForm()->getId()?>',
+                        <?=Load::FORM_LOADED?>: 1,
+                        <?=Load::FOCUS?>: '<?= $block->getData(Load::FOCUS)?>',
+                        <?=Load::CURRENT_URL?>: '<?= $block->getData(Load::CURRENT_URL)?>',
+                        <?=Load::SLIDER_POSITION?>: '<?= $block->getData(Load::SLIDER_POSITION)?>',
+                        <?=Load::BUTTON_TEXT?>: '<?= $block->getData(Load::BUTTON_TEXT)?>',
+                        <?=Load::BUTTON_COLOR?>: '<?= $block->getData(Load::BUTTON_COLOR)?>',
+                        <?=Load::BUTTON_TEXT_COLOR?>: '<?= $block->getData(Load::BUTTON_TEXT_COLOR)?>',
+                        <?=Load::BACKGROUND_COLOR?>: '<?= $block->getData(Load::BACKGROUND_COLOR)?>',
+                        <?=Load::BORDER_COLOR?>: '<?= $block->getData(Load::BORDER_COLOR)?>',
+                        <?=Load::FORM_WIDTH?>: '<?= $block->getData(Load::FORM_WIDTH)?>',
+                        <?=Load::FORM_MARGIN_BOTTOM?>: '<?= $block->getData(Load::FORM_MARGIN_BOTTOM)?>',
+                        <?=Load::IS_SLIDE_OUT ?>: '<?= $block->getData(Load::IS_SLIDE_OUT)?>'
+                    },
+                    success: function (result) {
+                        breeze('#webform-async-<?= $block->getUid() ?>').html(result).trigger('contentUpdated');
+                        breeze('#webform-async-<?= $block->getUid() ?>').trigger('contentUpdated');
+                        try {
+                            breeze('#webform-async-<?= $block->getUid() ?> form').applyBindings();
+                        } catch (e) {
+                        }
+
+                        var evt = document.createEvent("Event");
+                        evt.initEvent("webformsAsyncLoad", false, false);
+                        window.dispatchEvent(evt);
+                        document.dispatchEvent(new CustomEvent("breeze:load"));
+                    }
+                });
+            });
+        </script>
+    <?php } ?>
+<?php } ?>

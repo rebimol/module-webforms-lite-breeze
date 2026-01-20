@@ -1,0 +1,200 @@
+<?php
+/** @var Recaptcha $block */
+/** @var Escaper $escaper */
+
+use MageMe\WebForms\Block\Form\Element\Captcha\Type\Recaptcha;
+use Magento\Framework\Escaper;
+
+?>
+<?php
+$recaptcha = $block->getCaptcha();
+$uid = $block->getUid();
+
+$html = str_replace(["\r", "\n"], '', sprintf(
+    '<div class="captcha-wrapper">
+                    <input type="hidden" name="%s" class="required-entry"/>
+                    <div class="%s">
+                        <div class="recaptcha-container"></div>
+                    </div>
+                </div>',
+    $recaptcha->getResponseName(),
+    'recaptcha-position-' . $recaptcha->getPosition()
+));
+?>
+
+<script>
+    'use strict';
+    (() => {
+        document.getElementById("captcha-container-<?= $uid ?>").innerHTML = '<?= $html ?>';
+        document.addEventListener('breeze:load', function () {
+            initCaptcha<?= $uid; ?>();
+        });
+    })();
+
+    function initCaptcha<?= $uid; ?>() {
+        const options = {
+            globalOnLoadCallback: 'webformsCaptchaOnload',
+            captchaReadyEvent: 'webformsCaptchaApiReady',
+            languageCode: '<?= $block->getLocale() ?>',
+            publicKey: '<?= $recaptcha->getPublicKey() ?>',
+            scriptId: 'mm_captcha',
+            scriptExists: false,
+            responseFieldName: '<?= $recaptcha->getResponseName() ?>',
+            version: '<?= $recaptcha->getVersion() ?>',
+            position: '<?= $recaptcha->getPosition() ?>',
+            theme: '<?= $recaptcha->getTheme() ?>',
+            action: '<?= $recaptcha->getAction() ?>',
+            checkboxChallenge: <?= $recaptcha->getCheckboxChallenge() ? 'true' : 'false' ?>,
+            render: 'explicit'
+        }
+
+        addCaptchaScriptTag();
+        let captcha;
+        try {
+            captcha = getCaptchaObject();
+        } catch {
+            captcha = false;
+        }
+        if (captcha && captcha.render) { // Check if reCAPTCHA is already loaded
+            initCaptcha();
+        } else { // Wait for reCAPTCHA to be loaded
+            window.addEventListener(options.captchaReadyEvent, function() {
+                initCaptcha();
+            });
+        }
+
+        function initCaptcha() {
+            const captcha = getCaptchaObject();
+            const params = {theme: options.theme, sitekey: options.publicKey};
+
+            // Handle Enterprise with checkbox challenge
+            if (isEnterprise() && options.checkboxChallenge) {
+                params.size = 'normal';
+                params.callback = saveToken;
+            } else if (isEnterprise() && !options.checkboxChallenge) {
+                // Enterprise invisible mode
+                params.size = 'invisible';
+            } else if (getIsInvisibleRecaptcha()) {
+                params.size = 'invisible';
+            } else {
+                params.callback = saveToken;
+            }
+
+            const self = this;
+            captcha.ready(function () {
+                const captchaDivs = document.querySelectorAll('[class="recaptcha-container"]');
+                for (let i = 0; i < captchaDivs.length; i++) {
+                    try {
+                        const cid = captcha.render(captchaDivs[i], params);
+                        captchaDivs[i].setAttribute('cid', cid);
+                    } catch (e) { /* recaptcha was already rendered */ }
+                }
+
+                window.addEventListener('mm-form-captcha-promise', (e) => {
+                    let cid = null;
+                    let form = null;
+                    if (e && e.detail) {
+                        cid = e.detail.cid;
+                        form = e.detail.form;
+                    }
+                    if (typeof cid === "undefined" || cid === null) {
+                        return;
+                    }
+                    if (typeof form === "undefined" || form === null) {
+                        return;
+                    }
+                    captcha.reset(cid);
+                    form.setCaptchaPromise(getToken.bind(self), self);
+                });
+
+                window.addEventListener('mm-form-captcha-reload', (e) => {
+                    let cid = null;
+                    if (e && e.detail) {
+                        cid = e.detail.cid;
+                    }
+                    if (typeof cid === "undefined" || cid === null) {
+                        return;
+                    }
+                    captcha.reset(cid);
+                });
+            })
+
+            function getToken(cid, form) {
+                const captcha = getCaptchaObject();
+                switch (options.version) {
+                    case '3': {
+                        return captcha.execute(cid);
+                    }
+                    case 'enterprise': {
+                        // If checkbox challenge is enabled, handle it like v2
+                        if (options.checkboxChallenge) {
+                            return new Promise(async (resolve, reject) => {
+                                const token = form.controls.form.querySelector(`[name="${options.responseFieldName}"]`);
+                                if (token) {
+                                    resolve(token.value);
+                                }
+                                resolve('');
+                            });
+                        }
+                        return captcha.execute(cid, {action: options.action});
+                    }
+                    default: {
+                        return new Promise(async (resolve, reject) => {
+                            const token = form.controls.form.querySelector(`[name="${options.responseFieldName}"]`);
+                            if (token) {
+                                resolve(token.value);
+                            }
+                            resolve('');
+                        });
+                    }
+                }
+            }
+
+            function saveToken(token) {
+                const rFields = document.querySelectorAll(`[name="${options.responseFieldName}"]`);
+                for (let i = 0; i < rFields.length; i++) {
+                    rFields[i].value = token;
+                }
+            }
+        }
+
+        function getIsInvisibleRecaptcha() {
+            return options.version === '3';
+        }
+
+        function isEnterprise() {
+            return options.version === 'enterprise';
+        }
+
+        function addCaptchaScriptTag() {
+            if (!document.getElementById(options.scriptId)) {
+                const script = document.createElement('script');
+                const firstScriptTag = document.getElementsByTagName('script')[0];
+                const api = isEnterprise() ? 'enterprise' : 'api';
+
+                script.async = true;
+                script.defer = true;
+
+                script.src = `https://www.google.com/recaptcha/${api}.js?render=${options.render}`;
+
+                if (options.languageCode) {
+                    script.src += `&hl=${options.languageCode}`
+                }
+                if (options.position) {
+                    script.src += `&badge=${options.position}`
+                }
+                script.onload = () => {
+                    window.dispatchEvent(new CustomEvent(options.captchaReadyEvent));
+                }
+                firstScriptTag.parentNode.insertBefore(script, firstScriptTag);
+            }
+            options.scriptExists = true;
+        }
+
+        function getCaptchaObject() {
+            return isEnterprise() ? window.grecaptcha.enterprise : window.grecaptcha;
+        }
+
+        return {};
+    }
+</script>

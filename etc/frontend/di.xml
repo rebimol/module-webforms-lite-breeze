@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <type name="MageMe\WebFormsLite\Block\Form">
+        <plugin name="breeze_webforms_async_template"
+                type="MageMe\WebFormsLiteBreeze\Plugin\FormTemplate"
+                sortOrder="1000" disabled="false"/>
+    </type>
+
+    <type name="Magento\Framework\View\Element\AbstractBlock">
+        <plugin name="breeze_webforms_script_tag"
+                type="MageMe\WebFormsLiteBreeze\Plugin\AddBreezeScriptTag"
+                sortOrder="1000" disabled="false"/>
+    </type>
+
+    <type name="Magento\Framework\View\Element\Template">
+        <plugin name="breeze_webforms_date_template"
+                type="MageMe\WebFormsLiteBreeze\Plugin\DateTemplate"
+                sortOrder="1000" disabled="false"/>
+    </type>
+
+    <type name="MageMe\WebFormsLite\Block\Form\Element\Field">
+        <plugin name="breeze_webforms_scripts"
+                type="MageMe\WebFormsLiteBreeze\Plugin\Field"
+                sortOrder="1000" disabled="false"/>
+    </type>
+
+    <type name="MageMe\WebFormsLite\Block\Form\Element\Captcha\Type\Recaptcha">
+        <plugin name="breeze_webforms_captcha_template"
+                type="MageMe\WebFormsLiteBreeze\Plugin\Captcha\Recaptcha"
+                sortOrder="1000" disabled="false"/>
+    </type>
+</config>
