@@ -14,14 +14,8 @@ class Field
         'autocomplete' => [
             'MageMe_WebFormsLite/js/auto-complete'
         ],
-        'colorpicker' => [
-            'MageMe_WebFormsLite/js/coloris'
-        ],
         'date' => [
             'MageMe_WebFormsLiteBreeze/js/breeze/datepicker'
-        ],
-        'gallery' => [
-            'imagePicker'
         ],
         'phone_number' => [
             'phoneUtils'
@@ -31,9 +25,6 @@ class Field
         ],
         'image' => [
             'MageMe_WebFormsLite/js/dropzone'
-        ],
-        'wysiwyg' => [
-            'sceditor'
         ],
     ];
 
