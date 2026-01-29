@@ -22,10 +22,7 @@ class Field
         ],
         'file' => [
             'MageMe_WebFormsLite/js/dropzone'
-        ],
-        'image' => [
-            'MageMe_WebFormsLite/js/dropzone'
-        ],
+        ]
     ];
 
     /**

@@ -37,43 +37,4 @@ class FormTemplate
         }
         return $template;
     }
-
-    /**
-     * @param Form $block
-     * @param string $html
-     * @return string
-     */
-    public function afterToHtml(Form $block, string $html): string
-    {
-        if (!$this->breezeHelper->isEnabled()) {
-            return $html;
-        }
-        $template = (string)$block->getTemplate();
-        $scriptHtml = '';
-        if (str_contains($template, 'multistep')) {
-            $scriptHtml .= "<div data-mage-init='{\"MageMe_WebFormsLite/js/multistep\": {}}'></div>";
-        }
-        return $scriptHtml . $html;
-    }
-
-    /**
-     * @param string $path
-     * @param int $order
-     * @return string
-     */
-    private function getCssScript(string $path, int $order = CssOrder::FORMS): string
-    {
-        return sprintf("<script data-breeze>
-            (() => {
-                if (!window.MageMe || !MageMe.loader) {
-                    return;
-                }
-                MageMe.loader.addCssOrdered(
-                    '%s',
-                    '%s'
-                );
-            })();
-        </script>
-        ", $path, $order);
-    }
 }
