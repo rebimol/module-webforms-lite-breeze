@@ -13,9 +13,6 @@ if ($block->getForm()->getIsActive() == Status::STATUS_DISABLED || !$block->isDi
         <div class="webforms-success-text">
             <?= $block->getSuccessText() ?>
         </div>
-        <script data-breeze>
-            <?= $block->getAfterSubmissionScript(); ?>
-        </script>
     <?php } ?>
 
     <?php if (($block->getSuccess() && $block->getForm()->getIsDisplayedAfterSubmission()) || !$block->getSuccess()) { ?>
@@ -38,8 +35,7 @@ if ($block->getForm()->getIsActive() == Status::STATUS_DISABLED || !$block->isDi
                         <?=Load::BACKGROUND_COLOR?>: '<?= $block->getData(Load::BACKGROUND_COLOR)?>',
                         <?=Load::BORDER_COLOR?>: '<?= $block->getData(Load::BORDER_COLOR)?>',
                         <?=Load::FORM_WIDTH?>: '<?= $block->getData(Load::FORM_WIDTH)?>',
-                        <?=Load::FORM_MARGIN_BOTTOM?>: '<?= $block->getData(Load::FORM_MARGIN_BOTTOM)?>',
-                        <?=Load::IS_SLIDE_OUT ?>: '<?= $block->getData(Load::IS_SLIDE_OUT)?>'
+                        <?=Load::FORM_MARGIN_BOTTOM?>: '<?= $block->getData(Load::FORM_MARGIN_BOTTOM)?>'
                     },
                     success: function (result) {
                         breeze('#webform-async-<?= $block->getUid() ?>').html(result).trigger('contentUpdated');

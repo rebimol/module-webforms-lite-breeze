@@ -18,15 +18,12 @@ define([], function () {
         function Form(options) {
             const defaults = {
                 submitUrl: '',
-                reviewUrl: '',
                 uid: '',
                 formId: '',
                 ajax: true,
                 success: false,
                 displayAfterSubmission: false,
                 scrollAfterSubmission: false,
-                showReview: false,
-                saveDataLocal: false,
                 useCaptcha: false,
                 captchaResponseName: '',
                 captchaPromise: null,
@@ -42,8 +39,6 @@ define([], function () {
                 },
                 controls: {},
                 modal: null,
-                saveTimer: null,
-                savePeriod: 3000,
                 validateFieldInline: true,
                 validateRequired: true,
                 validateFieldSelector: '[data-validate]',
@@ -54,8 +49,6 @@ define([], function () {
                 beforeValidation: null,
                 validationCb: null,
                 afterValidation: null,
-                beforeReview: null,
-                afterReview: null,
                 beforeSubmit: null,
                 afterSubmit: null,
                 beforeFieldValidation: null,
@@ -96,27 +89,7 @@ define([], function () {
             this.pushForm(this);
             this.controls.form.onsubmit = (e) => {
                 e.preventDefault();
-                if (this.showReview) {
-                    this.review();
-                } else {
-                    this.submit();
-                }
-            }
-            if (this.showReview) {
-                document.addEventListener('webforms_review_confirm', (e) => {
-                    if (e.detail.uid === this.uid) {
-                        this.submit();
-                    }
-                });
-            }
-            if (this.saveDataLocal) {
-                if (this.success) {
-                    this.clearData();
-                }
-                this.loadData();
-                this.saveTimer = setInterval(() => {
-                    this.saveData()
-                }, this.savePeriod);
+                this.submit();
             }
             if (this.useCaptcha) {
                 this.getCaptchaPromise();
@@ -180,65 +153,6 @@ define([], function () {
             return valid;
         }
 
-        Form.prototype.review = async function () {
-            if (typeof this.beforeReview === 'function') {
-                this.beforeReview(this)
-            }
-            const valid = await this.validate();
-            if (valid) {
-                this.controls.form.querySelector('input[name=form_key]').value = this.getFormKey();
-                if (this.tingle) {
-                    const modal = new this.tingle.modal({
-                        beforeOpen: () => {
-                            const xhr = new XMLHttpRequest();
-                            const formData = new FormData(this.controls.form);
-                            xhr.open('POST', this.reviewUrl, true);
-                            xhr.responseType = 'json';
-                            xhr.upload.onloadstart = () => {
-                                this.controls.submitButton.disabled = true;
-                                this.showElement(this.controls.sendingData);
-                            }
-                            xhr.upload.onerror = () => {
-                                this.controls.submitButton.disabled = false;
-                                this.hideElement(this.controls.sendingData);
-                                this.showMessage(this.messages.error, this.messages.errorTxt, 'error');
-                                modal.close();
-                            }
-                            xhr.onloadend = () => {
-                                this.controls.submitButton.disabled = false;
-                                this.hideElement(this.controls.sendingData);
-                                let data = xhr.response ?? {};
-                                if (!data.success) {
-                                    let errorTxt;
-                                    if (data.errors && typeof (data.errors) == "string") {
-                                        errorTxt = data.errors;
-                                    } else {
-                                        errorTxt = this.messages.unknownTxt;
-                                    }
-                                    this.showMessage(this.messages.error, errorTxt, 'error');
-                                    return modal.close();
-                                }
-                                const content = document.createElement('div');
-                                content.append(document.createRange().createContextualFragment(data.html));
-                                modal.setContent(content);
-                            };
-                            xhr.send(formData);
-                        }
-                    });
-                    modal.open();
-                    this.modal = modal;
-                } else {
-                    const formData = {};
-                    this.controls.form.formData.forEach((value, key) => formData[key] = value);
-                    alert(JSON.stringify(formData));
-                }
-            }
-            if (typeof this.afterReview === 'function') {
-                this.afterReview(this, valid)
-            }
-            return this;
-        }
-
         Form.prototype.submit = async function () {
             const beforeSubmitEvent = new CustomEvent('webforms_before_submit', {
                 detail: {
@@ -299,19 +213,6 @@ define([], function () {
                         }
                     });
                     document.dispatchEvent(afterSubmitSuccess);
-                    this.clearData();
-                    if (data.script) {
-                        eval(data.script);
-                        return;
-                    }
-                    if (data.after_submission_script) {
-                        eval(data.after_submission_script);
-                    }
-                    if (data.redirect_url) {
-                        this.controls.progressText.innerText = this.messages.redirecting;
-                        window.location = data.redirect_url;
-                        return;
-                    }
                     const successText = data.success_text;
                     if (this.displayAfterSubmission) {
                         this.controls.submitButton.disabled = false;
@@ -352,10 +253,6 @@ define([], function () {
                         errorTxt = this.messages.unknownTxt;
                     }
                     this.showMessage(this.messages.error, errorTxt, 'error');
-
-                    if (data.script) {
-                        eval(data.script);
-                    }
                 }
             }
             xhr.send(formData);
@@ -388,7 +285,6 @@ define([], function () {
             this.controls.form.appendChild(input);
 
             this.controls.form.submit();
-            this.clearData();
         }
 
         Form.prototype.showMessage = function (title, message, type) {
@@ -470,65 +366,6 @@ define([], function () {
             if (this.modal) {
                 this.modal.close();
             }
-        }
-
-        Form.prototype.loadData = function () {
-            const formData = JSON.parse(localStorage.getItem('mm_webform_' + this.formId) ?? null) ?? {};
-            Object.entries(formData).forEach(function ([key, val]) {
-                const input = this.controls.form.querySelector('[id="' + key.replace(formData.uid, this.uid) + '"]');
-                if (!input) {
-                    return;
-                }
-                if (typeof input.loadData === 'function') {
-                    input.loadData(val, formData.uid);
-                } else if (['checkbox', 'radio'].includes(input.type)) {
-                    input.checked = val;
-                } else if (input.type === 'select-multiple') {
-                    if (Array.isArray(val)) {
-                        input.querySelectorAll('option').forEach((opt) => {
-                            opt.selected = val.includes(opt.value);
-                        });
-                    }
-                } else {
-                    input.value = val;
-                }
-                if (typeof input.onchange === 'function') {
-                    input.onchange();
-                } else if (typeof input.onclick === 'function') {
-                    input.onclick();
-                }
-
-            }, this);
-            document.dispatchEvent(new CustomEvent('mm-form-data-loaded', {
-                detail: {
-                    'formData': formData
-                }
-            }));
-        }
-
-        Form.prototype.saveData = function () {
-            const formData = {
-                uid: this.uid
-            };
-            this.controls.form.querySelectorAll('select, input, textarea').forEach((input) => {
-                if (typeof input.saveData === 'function') {
-                    input.saveData(formData)
-                } else if (['checkbox', 'radio'].includes(input.type)) {
-                    formData[input.id] = input.checked;
-                } else if (input.type === 'select-multiple') {
-                    formData[input.id] = Array.from(input.selectedOptions).map(v => v.value);
-                } else {
-                    formData[input.id] = input.value;
-                }
-            });
-            localStorage.setItem('mm_webform_' + this.formId, JSON.stringify(formData));
-        }
-
-        Form.prototype.clearData = function () {
-            if (this.saveTimer) {
-                clearInterval(this.saveTimer);
-            }
-            localStorage.removeItem('mm_webform_' + this.formId);
         }
 
         Form.prototype.fadeOut = function (element, step = 0.1, delay = 50) {
